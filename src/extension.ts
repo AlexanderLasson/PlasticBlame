@@ -19,7 +19,7 @@ export function activate(context: vscode.ExtensionContext) {
     const cursorLine = editor.selection.active.line + 1;
 
     // Here we run Plastic SCM annotate command
-    exec(`cm annotate "${filePath}" --nogloballogs`, (err, stdout, stderr) => {
+    exec(`cm annotate "${filePath}"`, (err, stdout, stderr) => {
       if (err || stderr) {
         vscode.window.showErrorMessage(`Plastic annotate failed: ${stderr || err?.message}`);
         return;

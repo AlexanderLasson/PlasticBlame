@@ -2,6 +2,14 @@
 
 All notable changes to the "plastic-blame" extension will be documented in this file.
 
+## [0.0.4] — 2025-07-11
+### Fixed
+- Fixed assert reference
+
+
+## [0.0.4] — 2025-07-11
+### Added
+- performance fixes
 
 ## [0.0.3] — 2025-07-11
 ### Fixed 
