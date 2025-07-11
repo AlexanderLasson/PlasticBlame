@@ -30,16 +30,10 @@ export function activate(context: vscode.ExtensionContext) {
 		return;
 	  }
 
-      const targetLine = lines[cursorLine - 1];
-      const match = targetLine.match(/^(.+?)\s+(.+?)\s+\d+\s+/);
-      if (!match) {
-        vscode.window.showInformationMessage('Failed to parse annotate output.');
-        return;
-      }
-
-      const date = match[1].trim();
-      const author = match[2].trim();
-      const blameText = `${author} • ${date}`;
+      const targetLine = lines[cursorLine - 1].trim();
+	  const parts = targetLine.split('');
+	  const author = parts[0];
+	  const blameText = `${author} • ${parts[1]}`;
 
       // Clear existing decorations
       if (currentDecoration) {

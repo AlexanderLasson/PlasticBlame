@@ -4,6 +4,10 @@ All notable changes to the "plastic-blame" extension will be documented in this 
 
 ## [0.0.4] — 2025-07-11
 ### Fixed
+- Formed regex to comply with plastic standard `author branch#rev linetext`
+
+## [0.0.4] — 2025-07-11
+### Fixed
 - Fixed assert reference
 
 
