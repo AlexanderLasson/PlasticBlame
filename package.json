@@ -2,7 +2,7 @@
   "name": "plastic-blame",
   "displayName": "Plastic Blame",
   "description": "A blame solution for Plastic SCM based projects. Allowing for visuals of previous authors inline.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "DeadFault",
   "engines": {
     "vscode": "^1.102.0"
