@@ -2,7 +2,7 @@
   "name": "plastic-blame",
   "displayName": "Plastic Blame",
   "description": "A blame solution for Plastic SCM based projects. Allowing for visuals of previous authors inline.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "DeadFault",
   "engines": {
     "vscode": "^1.101.0"
@@ -17,7 +17,7 @@
   "contributes": {
     "commands": [
       {
-        "command": "plasticblame.showBlame",
+        "command": "plasticBlame.showBlame",
         "title": "Show Plastic Blame"
       }
     ]
@@ -31,15 +31,15 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.102.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/vscode": "^1.101.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
-    "eslint": "^9.25.1",
-    "typescript": "^5.8.3",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.25.1",
+    "typescript": "^5.8.3"
   },
   "repository": {
     "type": "git",
