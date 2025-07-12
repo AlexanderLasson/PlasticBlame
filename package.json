@@ -2,8 +2,10 @@
   "name": "plastic-blame",
   "displayName": "Plastic Blame",
   "description": "A blame solution for Plastic SCM based projects. Allowing for visuals of previous authors inline.",
-  "version": "0.0.8",
+  "version": "1.0.0",
+  "icon": "images/icon.png",
   "publisher": "DeadFault",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.101.0"
   },
@@ -23,6 +25,10 @@
       {
         "command": "plasticBlame.clearCache",
         "title": "Clear Plastic Blame Cache"
+      },
+      {
+        "command": "plasticBlame.refreshBlame",
+        "title": "Refresh Plastic Blame"
       }
     ]
   },
