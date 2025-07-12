@@ -20,7 +20,6 @@ class PlasticBlameProvider {
   }
 
   private setupSelectionChangeListener() {
-    // We remove existing listener to prevent duplicates
     if (this.selectionChangeListener) {
       this.selectionChangeListener.dispose();
     }
@@ -98,8 +97,18 @@ class PlasticBlameProvider {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       
-      // Standard Plastic SCM annotate output format: "author branch#changeset"
-      const match = line.match(/^([^\s]+)\s+([^#]+#\d+)$/);
+      // Try multiple patterns to match different Plastic SCM output formats
+      let match = line.match(/^([^\s]+)\s+([^#]+#\d+)\s*$/);
+      
+      if (!match) {
+        // Try pattern for lines with code: "author branch#changeset content"
+        match = line.match(/^([^\s]+)\s+([^#]+#\d+)\s+(.+)$/);
+      }
+      
+      if (!match) {
+        // Try pattern for lines with just author and changeset (with optional trailing space)
+        match = line.match(/^([^\s]+)\s+([^\s]+)\s*$/);
+      }
       
       if (match) {
         const [, author, changeset] = match;
@@ -107,7 +116,7 @@ class PlasticBlameProvider {
           line: i + 1,
           changeset,
           author,
-          date: '' // Plastic SCM doesn't include date in this format :(
+          date: '' // Plastic SCM doesn't include date in this format
         });
       } else {
         // Fallback for lines that don't match the expected format
