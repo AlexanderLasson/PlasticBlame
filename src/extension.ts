@@ -14,9 +14,15 @@ class PlasticBlameProvider {
   private blameCache: Map<string, BlameInfo[]> = new Map();
   private isProcessing = false;
   private selectionChangeListener: vscode.Disposable | null = null;
+  private documentChangeListener: vscode.Disposable | null = null;
+  private documentCloseListener: vscode.Disposable | null = null;
+  private documentSaveListener: vscode.Disposable | null = null;
 
   constructor() {
     this.setupSelectionChangeListener();
+    this.setupDocumentChangeListener();
+    this.setupDocumentCloseListener();
+    this.setupDocumentSaveListener();
   }
 
   private setupSelectionChangeListener() {
@@ -26,6 +32,56 @@ class PlasticBlameProvider {
 
     this.selectionChangeListener = vscode.window.onDidChangeTextEditorSelection((e) => {
       if (e.textEditor === vscode.window.activeTextEditor && !this.isProcessing) {
+        this.showBlameForCurrentLine();
+      }
+    });
+  }
+
+  private setupDocumentChangeListener() {
+    if (this.documentChangeListener) {
+      this.documentChangeListener.dispose();
+    }
+
+    this.documentChangeListener = vscode.workspace.onDidChangeTextDocument((e) => {
+      // Clear cache for the modified document
+      const filePath = e.document.uri.fsPath;
+      this.clearCacheForFile(filePath);
+      
+      // If this is the active editor, refresh the blame display
+      const activeEditor = vscode.window.activeTextEditor;
+      if (activeEditor && activeEditor.document.uri.fsPath === filePath) {
+        // Debounce the refresh to avoid too many calls during rapid changes
+        setTimeout(() => {
+          this.showBlameForCurrentLine();
+        }, 100);
+      }
+    });
+  }
+
+  private setupDocumentCloseListener() {
+    if (this.documentCloseListener) {
+      this.documentCloseListener.dispose();
+    }
+
+    this.documentCloseListener = vscode.workspace.onDidCloseTextDocument((document) => {
+      // Clear cache when document is closed
+      const filePath = document.uri.fsPath;
+      this.clearCacheForFile(filePath);
+    });
+  }
+
+  private setupDocumentSaveListener() {
+    if (this.documentSaveListener) {
+      this.documentSaveListener.dispose();
+    }
+
+    this.documentSaveListener = vscode.workspace.onDidSaveTextDocument((document) => {
+      // Clear cache for the saved document
+      const filePath = document.uri.fsPath;
+      this.clearCacheForFile(filePath);
+      // Refresh blame for the current line in the saved document
+      const activeEditor = vscode.window.activeTextEditor;
+      if (activeEditor && activeEditor.document.uri.fsPath === filePath) {
         this.showBlameForCurrentLine();
       }
     });
@@ -55,14 +111,20 @@ class PlasticBlameProvider {
   }
 
   private async getBlameInfo(filePath: string, lineNumber: number): Promise<BlameInfo | null> {
-    const cacheKey = `${filePath}:${lineNumber}`;
-    
-    // Check cache first
-    if (this.blameCache.has(cacheKey)) {
-      const cached = this.blameCache.get(cacheKey);
-      return cached ? cached[0] : null;
+    // Validate line number
+    if (lineNumber < 1) {
+      return null;
     }
 
+    // Check if we have cached data for this file
+    if (this.blameCache.has(filePath)) {
+      const cachedData = this.blameCache.get(filePath)!;
+      if (lineNumber <= cachedData.length) {
+        return cachedData[lineNumber - 1];
+      }
+    }
+
+    // If not cached or line number out of range, fetch fresh data
     return new Promise((resolve, reject) => {
       exec(`cm annotate "${filePath}"`, (err, stdout, stderr) => {
         if (err || stderr) {
@@ -74,14 +136,17 @@ class PlasticBlameProvider {
         try {
           const blameData = this.parseAnnotateOutput(stdout);
           
-          // Cache all results for this file
-          blameData.forEach((info, index) => {
-            const key = `${filePath}:${index + 1}`;
-            this.blameCache.set(key, [info]);
-          });
+          // Cache the entire blame data for this file
+          this.blameCache.set(filePath, blameData);
 
-          const targetInfo = blameData[lineNumber - 1];
-          resolve(targetInfo || null);
+          // Check if the requested line number is within bounds
+          if (lineNumber <= blameData.length) {
+            const targetInfo = blameData[lineNumber - 1];
+            resolve(targetInfo || null);
+          } else {
+            // Line number is out of bounds, return null
+            resolve(null);
+          }
         } catch (parseError) {
           console.error('Error parsing annotate output:', parseError);
           resolve(null);
@@ -90,7 +155,7 @@ class PlasticBlameProvider {
     });
   }
 
-    private parseAnnotateOutput(output: string): BlameInfo[] {
+  private parseAnnotateOutput(output: string): BlameInfo[] {
     const lines = output.split('\n').filter(line => line.trim());
     const blameData: BlameInfo[] = [];
 
@@ -132,11 +197,15 @@ class PlasticBlameProvider {
     return blameData;
   }
 
-  private showBlameDecoration(editor: vscode.TextEditor, lineNumber: number, blameInfo: BlameInfo) {
+  private showBlameDecoration(editor: vscode.TextEditor, lineNumber: number, blameInfo: BlameInfo | null) {
     // Clear existing decorations
     if (this.currentDecoration) {
       editor.setDecorations(this.currentDecoration, []);
       this.currentDecoration.dispose();
+    }
+
+    if (!blameInfo) {
+      return; // We don't show decoration if no blame info available
     }
 
     const blameText = `${blameInfo.author} • ${blameInfo.changeset}`;
@@ -155,6 +224,10 @@ class PlasticBlameProvider {
     editor.setDecorations(this.currentDecoration, [{ range }]);
   }
 
+  public clearCacheForFile(filePath: string) {
+    this.blameCache.delete(filePath);
+  }
+
   public clearCache() {
     this.blameCache.clear();
   }
@@ -165,6 +238,15 @@ class PlasticBlameProvider {
     }
     if (this.selectionChangeListener) {
       this.selectionChangeListener.dispose();
+    }
+    if (this.documentChangeListener) {
+      this.documentChangeListener.dispose();
+    }
+    if (this.documentCloseListener) {
+      this.documentCloseListener.dispose();
+    }
+    if (this.documentSaveListener) {
+      this.documentSaveListener.dispose();
     }
   }
 }
@@ -185,7 +267,18 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage('Plastic blame cache cleared');
   });
 
-  context.subscriptions.push(showBlameCommand, clearCacheCommand);
+  // Register refresh blame command
+  const refreshBlameCommand = vscode.commands.registerCommand('plasticBlame.refreshBlame', () => {
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+      const filePath = editor.document.uri.fsPath;
+      blameProvider.clearCacheForFile(filePath);
+      blameProvider.showBlameForCurrentLine();
+      vscode.window.showInformationMessage('Plastic blame refreshed');
+    }
+  });
+
+  context.subscriptions.push(showBlameCommand, clearCacheCommand, refreshBlameCommand);
 }
 
 export function deactivate() {
